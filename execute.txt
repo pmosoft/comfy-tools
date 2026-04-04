@@ -1,0 +1,22 @@
+python -m venv venv
+.\venv\Scripts\activate
+python -m pip install --upgrade pip
+pip install -r requirements.txt
+pip uninstall -y torch torchvision torchaudio
+pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118
+
+python -m pip install  d:\pycharm-projects\ComfyUI\python_embeded\insightface-0.7.3-cp310-cp310-win_amd64.whl
+pip install --force-reinstall --no-cache-dir numpy==1.26.4
+
+# pip install easyocr # numpy2 상위버젼 충돌 미설치요
+pip install gguf
+pip install piexif
+pip install segment-anything
+pip install onnxruntime-gpu
+pip install deep-translator
+pip install timm
+pip install langdetect
+pip install addict
+pip install yapf
+
+
