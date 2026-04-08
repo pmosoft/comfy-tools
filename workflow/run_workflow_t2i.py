@@ -16,7 +16,7 @@ def load_workflow(path):
 # workflow 수정
 # -----------------------
 
-def make_filename(prompt, steps, sampler, scheduler):
+def make_filename(prompt, steps, sampler, scheduler, shift):
     # 1. 프롬프트 첫 구문 추출 (콤마 기준)
     first_part = prompt.split(",")[0]
 
@@ -29,11 +29,11 @@ def make_filename(prompt, steps, sampler, scheduler):
     # 4. 길이 제한 (선택)
     first_part = first_part[:20]
 
-    return f"{first_part}_{steps}_{sampler}_{scheduler}"
+    return f"{first_part}_{steps}_{sampler}_{scheduler}_{shift}"
 
 
-def update_workflow(workflow, prompt, width, height, steps, sampler_name, scheduler):
-    filename = make_filename(prompt, steps, sampler_name, scheduler)
+def update_workflow(workflow, prompt, width, height, control_mode, steps, sampler_name, scheduler, shift):
+    filename = make_filename(prompt, steps, sampler_name, scheduler, shift)
 
     for node_id, node in workflow.items():
         # prompt
@@ -47,9 +47,13 @@ def update_workflow(workflow, prompt, width, height, steps, sampler_name, schedu
 
         # KSampler
         if node.get("class_type") == "KSampler":
+            node["inputs"]["control_after_generate"] = control_mode
             node["inputs"]["steps"] = steps
             node["inputs"]["sampler_name"] = sampler_name
             node["inputs"]["scheduler"] = scheduler
+
+        if node.get("class_type") == "ModelSamplingAuraFlow":
+            node["inputs"]["shift"] = shift
 
         # 🔥 SaveImage 파일명 변경
         if node.get("class_type") == "SaveImage":
@@ -79,16 +83,20 @@ prompt_list = [
 #     "Extreme macro close-up of anal penetration in doggy style. Woman’s ass cheeks spread wide by strong male hands, thick veiny cock halfway inserted into her tight glistening anus, detailed stretching, shiny lube and slight gape, realistic skin pores and textures, sharp focus, explicit medical-level detail, photorealistic, high resolution",
 # ]
 
-width = 480
-height = 640
+width = 480; height = 640
 
-# steps_list = [10]
-# sampler_list = ["euler", "dpmpp_2m"]
-# scheduler_list = ["normal", "karras"]
+control_mode = "fixed"
+#control_mode = "randomize"
 
 steps_list = [10]
-sampler_list = ["euler", "dpmpp_2m"]
-scheduler_list = ["normal", "karras"]
+
+sampler_scheduler_shift_list = [
+    ("dpmpp_2m", "karras", 2),
+    ("dpmpp_2m_sde", "karras", 2),
+    ("dpmpp_sde", "karras", 5),
+    ("uni_pc", "normal", 3),
+    ("euler", "normal", 2),
+]
 
 workflow_path = r"d:\pycharm-projects\ComfyUI\user\default\workflows\t2i\t2i_api.json"
 
@@ -102,26 +110,88 @@ count = 0
 
 for prompt in prompt_list:
     for steps in steps_list:
-        for sampler in sampler_list:
-            for scheduler in scheduler_list:
+        for sampler, scheduler, shift in sampler_scheduler_shift_list:
+            wf = json.loads(json.dumps(base_workflow))  # deepcopy
 
-                wf = json.loads(json.dumps(base_workflow))  # deepcopy
+            wf = update_workflow(
+                wf,
+                prompt,
+                width,
+                height,
+                control_mode,
+                steps,
+                sampler,
+                scheduler,
+                shift
+            )
 
-                wf = update_workflow(
-                    wf,
-                    prompt,
-                    width,
-                    height,
-                    steps,
-                    sampler,
-                    scheduler
-                )
+            result = queue_prompt(wf)
 
-                result = queue_prompt(wf)
+            count += 1
+            print(f"[{count}] 완료 → prompt='{prompt[:20]}...' / steps={steps} / {sampler} / {scheduler} / shift={shift} ")
 
-                count += 1
-                print(f"[{count}] 완료 → prompt='{prompt[:20]}...' / steps={steps} / {sampler} / {scheduler}")
-
-                time.sleep(0.5)
+            time.sleep(0.5)
 
 print("✅ 전체 배치 완료")
+
+
+#
+# sampler_scheduler_list = [
+#     # 🔥 Euler 계열
+#     ("euler", "normal"),
+#     ("euler_ancestral", "normal"),
+#     ("euler_cfg_pp", "karras"),
+#     ("euler_ancestral_cfg_pp", "karras"),
+#
+#     # 🔥 Heun 계열
+#     ("heun", "normal"),
+#     ("heunpp2", "karras"),
+#
+#     # 🔥 DPM 기본
+#     ("dpm_2", "karras"),
+#     ("dpm_2_ancestral", "karras"),
+#     ("dpm_fast", "normal"),
+#     ("dpm_adaptive", "normal"),
+#
+#     # 🔥 DPM++ 핵심 (가장 중요 ⭐)
+#     ("dpmpp_2m", "karras"),
+#     ("dpmpp_2m_cfg_pp", "karras"),
+#     ("dpmpp_2m_sde", "karras"),
+#     ("dpmpp_2m_sde_gpu", "karras"),
+#
+#     ("dpmpp_sde", "karras"),
+#     ("dpmpp_sde_gpu", "karras"),
+#
+#     ("dpmpp_2s_ancestral", "karras"),
+#     ("dpmpp_2s_ancestral_cfg_pp", "karras"),
+#
+#     ("dpmpp_3m_sde", "karras"),
+#     ("dpmpp_3m_sde_gpu", "karras"),
+#
+#     # 🔥 기타 안정형
+#     ("lms", "normal"),
+#     ("ddim", "normal"),
+#
+#     # 🔥 최신/빠른 계열
+#     ("uni_pc", "normal"),
+#     ("uni_pc_bh2", "normal"),
+#
+#     # 🔥 특수 (속도/실험)
+#     ("lcm", "normal"),
+#     ("ipndm", "normal"),
+#     ("ipndm_v", "normal"),
+#     ("deis", "normal"),
+#
+#     # 🔥 res 계열
+#     ("res_multistep", "karras"),
+#     ("res_multistep_cfg_pp", "karras"),
+#     ("res_multistep_ancestral", "karras"),
+#     ("res_multistep_ancestral_cfg_pp", "karras"),
+#
+#     # 🔥 기타 실험용
+#     ("gradient_estimation", "normal"),
+#     ("gradient_estimation_cfg_pp", "karras"),
+#     ("er_sde", "karras"),
+#     ("sa_solver", "normal"),
+#     ("sa_solver_pece", "normal"),
+# ]
