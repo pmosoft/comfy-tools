@@ -37,11 +37,31 @@ class SaveImageWithHook(SaveImage):
         return results
 
     def execute_python_hook(self, image_path, info):
-        # 여기에 실행하고 싶은 파이썬 코드를 작성합니다.
+        import os
+        import shutil
+
         print(f"--- [Hook Executed] ---")
         print(f"Saved Image Path: {image_path}")
         print(f"Additional Info: {info}")
-        # 예: 외부 DB 저장, Discord 알림 발송, AI 분석 모델 연동 등
+
+        try:
+            # 🔥 원본 경로
+            full_path = image_path
+
+            # 🔥 temp 경로 생성
+            rel_path = os.path.relpath(full_path, self.output_dir)
+            temp_path = os.path.join(self.output_dir, "temp", rel_path)
+
+            # 🔥 temp 폴더 생성 (없으면)
+            os.makedirs(os.path.dirname(temp_path), exist_ok=True)
+
+            # 🔥 파일 이동
+            shutil.move(full_path, temp_path)
+
+            print(f"📁 이동 완료 → {temp_path}")
+
+        except Exception as e:
+            print(f"❌ 이동 실패: {e}")
         
 NODE_CLASS_MAPPINGS = {
     "SaveImageWithHook": SaveImageWithHook
