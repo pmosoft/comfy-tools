@@ -56,7 +56,7 @@ def update_workflow(workflow, prompt, width, height, control_mode, steps, sample
             node["inputs"]["shift"] = shift
 
         # 🔥 SaveImage 파일명 변경
-        if node.get("class_type") == "SaveImage":
+        if node.get("class_type") == "SaveImageWithHook":
             node["inputs"]["filename_prefix"] = filename
 
     return workflow
